@@ -6,9 +6,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.userservice.userservice.dtos.*;
-import org.userservice.userservice.expections.UserAlreadyExistsException;
-import org.userservice.userservice.expections.UserNotFoundException;
-import org.userservice.userservice.expections.WrongPasswordEception;
 import org.userservice.userservice.services.AuthService;
 
 @RestController
