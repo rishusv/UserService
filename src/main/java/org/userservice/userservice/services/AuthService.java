@@ -1,10 +1,15 @@
 package org.userservice.userservice.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.userservice.userservice.clients.KafkaProducerClient;
+import org.userservice.userservice.dtos.EmailDto;
 import org.userservice.userservice.expections.UserAlreadyExistsException;
 import org.userservice.userservice.expections.UserNotFoundException;
 import org.userservice.userservice.expections.WrongPasswordEception;
@@ -23,12 +28,22 @@ public class AuthService {
     private BCryptPasswordEncoder bCryptPasswordEncoder;
     private SessionRepository sessionRepository;
     private SecretKey key = Jwts.SIG.HS256.key().build();
+    private KafkaProducerClient kafkaProducerClient;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository) {
+
+
+    public AuthService(UserRepository userRepository,
+                       BCryptPasswordEncoder bCryptPasswordEncoder,
+                       SessionRepository sessionRepository,
+                       KafkaProducerClient kafkaProducerClient) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.sessionRepository =sessionRepository;
+        this.kafkaProducerClient = kafkaProducerClient;
     }
 
     public boolean signUp(String email, String password) throws UserAlreadyExistsException {
@@ -43,6 +58,18 @@ public class AuthService {
         user.setPassword(bCryptPasswordEncoder.encode(password));
 
         userRepository.save(user);
+        try {
+            EmailDto emailDto = new EmailDto();
+            emailDto.setTo(email);
+            emailDto.setSubject("Welcome to Scaler");
+            emailDto.setBody("Have a pleasant learning experience.");
+            emailDto.setFrom("anuragbatch@gmail.com");
+
+            kafkaProducerClient.sendMessage("user_signedin", objectMapper.writeValueAsString(emailDto));
+        }catch (JsonProcessingException exception) {
+            throw new RuntimeException(exception.getMessage());
+        }
+
 
         return true;
     }
